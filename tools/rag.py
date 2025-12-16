@@ -43,8 +43,8 @@ def reciprocal_rank_fusion(faiss_results: List[Dict], bm25_results: List[Dict], 
 
 
 @observe()
-def answer_query_with_rag(query: str, pdf_path: str, embedding_model_name: str='thenlper/gte-small', rerank: bool=False, top_k: int=100, 
-                          final_context_k_rerank: int=5, hybrid_serach: bool=False, metadata_filter: Optional[Dict[str, str]] =None) -> Tuple[List[str], List[str]]:
+def search_with_rag(query: str, pdf_path: str, embedding_model_name: str='thenlper/gte-small', rerank: bool=False, top_k: int=100, 
+                          final_context_k_rerank: int=5, hybrid_serach: bool=False, metadata_filter: Optional[Dict[str, str]] =None) -> str:
     # 1. RETRIEVAL
     faiss_store, pdf_texts = load_faiss(pdf_path, embedding_model_name)
     faiss_results = search_faiss(faiss_store, query, top_k=top_k, metadata_filter=metadata_filter)
@@ -90,26 +90,4 @@ def answer_query_with_rag(query: str, pdf_path: str, embedding_model_name: str='
     # 3. CONTEXT FOR LLM 
     context = "\n\n".join(final_context_docs)
 
-    # 4. GENERATION
-    agent_input = (
-        f"""Context:
-        {context}
-
-        Question:
-        {query}
-
-        You have access to a retrieved context from a pdf document.
-        Answer the question ONLY based on the context provided. If you can't answer then write: "No information in given context."
-        """
-    )
-
-    agent = create_agent(model='gemini-2.5-flash-lite', system_prompt=agent_input)
-
-    for event in agent.stream(
-        {"messages": [{"role": "user", "content": query}]},
-        stream_mode="values",
-    ):
-        final_msg = event["messages"][-1]
-
-
-    return final_msg.content, retrieved_docs
+    return context
