@@ -2,7 +2,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 import os
 import pickle
 from langchain_community.vectorstores import FAISS
-from pdf_to_docs import get_pdf_as_document
+from tools.rag.pdf_to_docs import get_pdf_as_document
 from typing import Tuple, List
 from langchain_core.documents import Document
 

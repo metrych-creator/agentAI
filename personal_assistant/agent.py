@@ -1,6 +1,6 @@
 from google.adk.agents.llm_agent import Agent
 from google.adk.tools.google_search_tool import google_search
-from tools.search_knowledge_base import rag_tool
+from tools.rag.search_knowledge_base import rag_tool
 from google.adk.tools.agent_tool import AgentTool
 from tools.financial import financial_tool
 from datetime import datetime

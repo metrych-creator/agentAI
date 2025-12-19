@@ -1,5 +1,5 @@
 from google.adk.tools.function_tool import FunctionTool
-from tools.rag import search_with_rag
+from tools.rag.rag import search_with_rag
 import os
 
 PDF_PATH = "data/romeo-and-juliet.pdf"

@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langfuse import get_client, observe
-from vector_store_manager import load_faiss, search_faiss
+from tools.rag.vector_store_manager import load_faiss, search_faiss
 import numpy as np
 from typing import List, Tuple, Dict, Optional
 from langchain_core.documents import Document
