@@ -32,8 +32,21 @@ Unlike linear RAG systems, this agent features a self-critique loop.
 - **Critique**: The critique_agent identifies gaps or logic errors.
 - **Refine**: If the quality threshold isn't met, the agent loops back to the planning phase to fill gaps.
 
+
+First, an agent searches for historical information on the internet. Then, the critic agent checks if the agent correctly answered the user's question.
+
+![critic](images/critic.png)
+
 ### 3. Canvas Tool (Output Generation)
 The Canvas Tool handles the final presentation layer. It transforms raw research data into professional Markdown reports, HTML documents, or validated code snippets using structured templates.
+
+Code formatting:
+
+![code](images/code.png)
+
+Markdown formatting:
+
+![markdown](images/plan.png)
 
 ## Installation & Setup
 1. Clone the repository:
