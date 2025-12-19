@@ -23,6 +23,9 @@ The system follows a modular **"Plan-Execute-Critique-Refine"** architecture. It
 ### 1. Multi-Source Synthesis
 The agent intelligently switches between local documents (RAG), live web data, and structured financial feeds. The Synthesizer component resolves conflicts between these sources to produce a unified response.
 
+The Financial Agent has access to both cryptocurrencies and  currencies. However, it does not have direct access to the price of cryptocurrencies in every currency, so it is used twice. First, it gets the Bitcoin price in USD and then converts it to Euros. In the end, the critic accepts the generated answer.
+![finance](images/finance.png)
+
 ### 2. Autonomous Refinement Loop
 
 Unlike linear RAG systems, this agent features a self-critique loop.
