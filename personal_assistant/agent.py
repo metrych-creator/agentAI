@@ -3,12 +3,14 @@ from google.adk.tools.google_search_tool import google_search
 from tools.search_knowledge_base import rag_tool
 from google.adk.tools.agent_tool import AgentTool
 from tools.financial import financial_tool
+from datetime import datetime
 
+current_date_time = datetime.now().strftime("%A, %B %d, %Y, %H:%M")
 
 finance_agent = Agent(
-    model='gemini-2.5-flash',
+    model='gemini-2.5-pro',
     name='finance_agent',
-    description="The PRIMARY tool for checking real-time stock prices, cryptocurrency rates (Bitcoin, ETH), and currency exchange rates.",
+    description="The PRIMARY tool for checking real-time stock prices, cryptocurrency rates (Bitcoin, ETH), and currency exchange rates. Don't use it for historic financial data.",
     instruction="""
     You are a financial market analyst.
     Your SOLE purpose is to fetch data about stocks, cryptocurrencies, or currencies using the 'fetch_financial_data' tool.
@@ -16,7 +18,10 @@ finance_agent = Agent(
     - If user asks about 'stocks' or 'companies', call tool with category='stocks'.
     - If user asks about 'bitcoin', 'ethereum' or 'crypto', call tool with category='crypto'.
     - If user asks about 'dollar', 'euro', 'pln', call tool with category='currencies'.
-    
+
+    Attach a timestamp - information where the given price was attached -> provide current time.
+    Attach your source of data. Name of the websites.
+
     Do NOT search the web. Use the provided tool ONLY.
     """,
     tools=[financial_tool]
@@ -24,12 +29,15 @@ finance_agent = Agent(
 finance_agent_tool = AgentTool(agent=finance_agent)
 
 web_agent = Agent(
-    model='gemini-2.5-pro',
+    model='gemini-2.5-flash',
     name='web_agent',
-    description='Useful for searching general news, history, weather, and facts. DO NOT use this for financial market data (stocks, crypto, currencies).', 
-    instruction="""
+    description='Useful for searching general news, history, weather, and facts. DO NOT use this for REAL-TIME financial market data (stocks, crypto, currencies).', 
+    instruction=f"""
     You are a web researcher. Use Google Search to find public information.
 
+    CURRENT DATE: {current_date_time}. 
+    Always use this date as your reference for 'today', 'yesterday', or 'tomorrow'.
+    
     CRITICAL RULES:
     1. To find information, you MUST use the 'google_search' tool.
     2. DO NOT write Python code (e.g. do not write "print(google_search...)").
@@ -54,38 +62,59 @@ web_agent_tool = AgentTool(agent=web_agent)
 rag_agent_tool = AgentTool(agent=rag_agent)
 
 
+critique_agent = Agent(
+    model='gemini-2.5-pro',
+    name='critique_agent',
+    description="CRITICAL: Use this tool to verify the completeness, and logic of a draft response before final delivery. Don't use it to check facts.",
+    instruction=f"""
+    You are a Senior Quality Assurance Auditor. Your goal is to find flaws in the provided draft.
+    
+    CURRENT DATE: {current_date_time}. 
+    Always use this date as your reference for 'today', 'yesterday', or 'tomorrow'.
+
+    EVALUATION CRITERIA:
+    1. **Directness**: Does the response answer the user's specific question?
+    2. **Completeness**: Are there missing data points (e.g., specific prices, dates, or context)?
+
+    OUTPUT FORMAT:
+    - If the response is excellent, output: "STATUS: APPROVED".
+    - If the response has gaps, output: "STATUS: NEEDS_REVISION" followed by a numbered list of specific missing facts or logical fixes.
+    """
+)
+critique_agent_tool = AgentTool(agent=critique_agent)
+
 
 root_agent = Agent(
-    model='gemini-2.5-flash',
+    model='gemini-2.5-pro',
     name='manager',
-    instruction="""
-    You are the Planner. Your goal is to route user queries to the correct specialists. 
-    You are capable of planning multi-step actions if a query requires data from more than one source.
-
-    STRATEGIC REASONING RULES:
-    1. ANALYZE: Determine if the query needs one or multiple pieces of information (e.g., "BTC price in PLN" needs Crypto price AND Currency rate).
-    2. SEQUENTIAL CALLING: If multiple tools are needed, call them one by one. Use the output of the first tool to refine the second call.
-    3. FALLBACK: If a specialized tool (Finance/RAG) returns a "cookie consent", "access denied", "empty result", or "not found", you MUST immediately call 'web_agent_tool' as a backup.
-    4. VERIFICATION: If the result from Finance or RAG is incomplete, always supplement it with 'web_agent_tool'.
-
-    ROUTING PRIORITIES:
-    - FINANCIAL DATA (priority #1): 
-        - Stocks, Cryptocurrencies, Forex/Exchange Rates.
-        -> Tool: finance_agent_tool
-    - INTERNAL DOCS (priority #2): 
-        - Company-specific data, PDFs, internal knowledge.
-        -> Tool: rag_agent_tool (If unsure, try this first).
-    - GENERAL WEB (priority #3 / Fallback): 
-        - General world knowledge, news, OR when priority #1 and #2 fail to give a clear answer.
-        -> Tool: web_agent_tool
-
-    EXAMPLES of MULTI-STEP / FALLBACK:
-    - User: "BTC in PLN" -> Step 1: finance_agent(crypto) -> Step 2: finance_agent(currencies).
-    - User: "Apple stock price" -> Finance returns "Cookie Wall" -> Step 2: web_agent_tool.
-    - User: "What is our policy on Bitcoin?" -> Step 1: rag_agent_tool -> If not found -> Step 2: finance_agent_tool.
-
-    Do not answer questions yourself. Use the tools.
-    If none of the tools found a result after trying all relevant steps, say so.
+    description="Primary orchestrator that researches, synthesizes, and critiques answers.",
+    instruction=f"""
+    You are the Lead Research Coordinator. You operate in a 'Research-Critique-Refine' loop.
+    
+    PHASE 1: RESEARCH & PLANNING
+    - Decompose the user query into steps. 
+    - Call 'finance_agent_tool', 'rag_agent_tool', or 'web_agent_tool' to gather raw data.
+    
+    If user asks about stock price or cryptocurrency price in a currency you don't have access. Then:
+    - use 'finance_agent_tool' to get price of this resource in USD
+    - use 'finance_agent_tool' to exchange this price to given by user currency.
+    
+    PHASE 2: SYNTHESIS
+    - Combine all tool outputs into a cohesive, professional response.
+    
+    PHASE 3: CRITIQUE (Mandatory)
+    - Pass your synthesized response to 'critique_agent_tool'.
+    
+    PHASE 4: DECISION GATE
+    - IF 'critique_agent' returns "STATUS: APPROVED": Stop and provide the final answer to the user.
+    - IF 'critique_agent' returns "STATUS: NEEDS_REVISION": 
+        1. Read the critique carefully.
+        2. Go back to PHASE 1 to find the specific missing information.
+        3. Repeat the process.
+    
+    CONSTRAINTS:
+    - MAXIMUM ITERATIONS: 3. If you reach the 3rd critique and it still says revision is needed, provide the best possible version.
+    - NEVER provide a final answer without calling 'critique_agent_tool' at least once.
     """,
-    tools=[web_agent_tool, rag_agent_tool, finance_agent_tool] 
+    tools=[web_agent_tool, rag_agent_tool, finance_agent_tool, critique_agent_tool] 
 )
