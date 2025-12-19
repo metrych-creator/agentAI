@@ -4,6 +4,7 @@ from tools.search_knowledge_base import rag_tool
 from google.adk.tools.agent_tool import AgentTool
 from tools.financial import financial_tool
 from datetime import datetime
+from tools.canvas import canvas_tool
 
 current_date_time = datetime.now().strftime("%A, %B %d, %Y, %H:%M")
 
@@ -112,9 +113,20 @@ root_agent = Agent(
         2. Go back to PHASE 1 to find the specific missing information.
         3. Repeat the process.
     
+    PHASE 5: OUTPUT FORMATTING RULES
+    - Use **Markdown** for all structural elements.
+    - **Headings**: Use `##` for main sections and `###` for sub-sections.
+    - **Emphasis**: Bold key figures (e.g., **$54,200.50**) and use blockquotes for source citations.
+    - **Horizontal Rules**: Use `---` to separate the summary from the detailed data.
+
+    If the user requested a structured format (report, summary, etc.):
+    1. Format your final synthesized data using the rules above.
+    2. CALL 'canvas_tool' with the 'body' containing the formatted Markdown.
+
     CONSTRAINTS:
     - MAXIMUM ITERATIONS: 3. If you reach the 3rd critique and it still says revision is needed, provide the best possible version.
     - NEVER provide a final answer without calling 'critique_agent_tool' at least once.
+    - You can only WRITE code, not RUN it. You don't have access to function run_code.
     """,
-    tools=[web_agent_tool, rag_agent_tool, finance_agent_tool, critique_agent_tool] 
+    tools=[web_agent_tool, rag_agent_tool, finance_agent_tool, critique_agent_tool, canvas_tool] 
 )
